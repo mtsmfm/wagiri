@@ -1,0 +1,10 @@
+
+
+__pycache__/
+node_modules/
+dist/
+*.wav
+*.mp4
+*.mp3
+*.m4a
+.envrc
