@@ -16,6 +16,7 @@ import sys
 import numpy as np
 import onnx
 from onnx import helper, numpy_helper
+from onnx_utils import remove_unused_initializers
 
 def get_attr(n, name, default=None):
     for a in n.attribute:
@@ -183,6 +184,8 @@ def main(src, dst):
     graph.node.extend(ordered)
 
     print(f'fused time={fused_time} freq={fused_freq}, nodes {len(kept)} -> {len(ordered)}')
+    print(f'removed {len(remove_unused_initializers(graph))} unused initializers')
+    onnx.checker.check_model(model, full_check=False)
     onnx.save(model, dst, save_as_external_data=False)
 
 if __name__ == '__main__':

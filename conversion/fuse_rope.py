@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Fuse the RoPE subgraph into com.microsoft::RotaryEmbedding.
+"""Fuse legacy exported RoPE subgraphs into com.microsoft::RotaryEmbedding.
+
+New models emit RotaryEmbedding directly in export_onnx.py. This pass remains
+available for models produced by older versions of the exporter.
 
 Interleaved RoPE from the torch export:
   x [B, N, S, 64]
@@ -18,6 +21,7 @@ import sys
 import numpy as np
 import onnx
 from onnx import helper, numpy_helper
+from onnx_utils import remove_unused_initializers
 
 def main(src, dst):
     model = onnx.load(src)
@@ -163,6 +167,7 @@ def main(src, dst):
     graph.initializer.extend(added_inits.values())
 
     print(f'fused {fused} RotaryEmbedding, skipped {skipped}')
+    print(f'removed {len(remove_unused_initializers(graph))} unused initializers')
     onnx.checker.check_model(model, full_check=False)
     onnx.save(model, dst, save_as_external_data=False)
 

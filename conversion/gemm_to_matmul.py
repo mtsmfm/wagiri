@@ -13,6 +13,7 @@ usage: python gemm_to_matmul.py in.onnx out.onnx
 import sys
 import onnx
 from onnx import helper, numpy_helper
+from onnx_utils import remove_unused_initializers
 
 def main(src, dst):
     model = onnx.load(src)
@@ -61,6 +62,7 @@ def main(src, dst):
     del graph.node[:]
     graph.node.extend(new_nodes)
     print(f'replaced {replaced} Gemm nodes, skipped {skipped}')
+    print(f'removed {len(remove_unused_initializers(graph))} unused initializers')
     onnx.checker.check_model(model, full_check=False)
     onnx.save(model, dst, save_as_external_data=False)
 

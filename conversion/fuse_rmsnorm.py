@@ -12,6 +12,7 @@ import sys
 import numpy as np
 import onnx
 from onnx import helper, numpy_helper
+from onnx_utils import remove_unused_initializers
 
 def main(src, dst, only_d=None):
     model = onnx.load(src)
@@ -92,6 +93,7 @@ def main(src, dst, only_d=None):
     del graph.node[:]
     graph.node.extend(new_nodes)
     print(f'fused {fused} L2Norm, skipped {skipped}')
+    print(f'removed {len(remove_unused_initializers(graph))} unused initializers')
     onnx.checker.check_model(model, full_check=False)
     onnx.save(model, dst, save_as_external_data=False)
 

@@ -21,9 +21,9 @@ for (const old of ['wagiri-model-v1', 'wagiri-model-v2', 'wagiri-model-v3', 'wag
 // MatMulAddFusion fuses MatMul+Add into Gemm, which hits the WebGPU EP's slow Gemm
 // shader and runs ~2x slower (see conversion/gemm_to_matmul.py). Split falls back to
 // CPU, so it is pre-expanded into Slice by conversion/split_to_slice.py (all nodes stay
-// on the GPU = graph capture becomes possible). The model also has fuse_rope /
-// fuse_attention / fuse_for_jsep / fuse_rmsnorm applied (paired with the patched
-// ORT kernels in patches/onnxruntime-web+*.patch — see the README).
+// on the GPU = graph capture becomes possible). RoPE is exported directly as
+// RotaryEmbedding; fuse_attention / fuse_for_jsep / fuse_rmsnorm are then applied
+// (paired with the patched ORT kernels in patches/onnxruntime-web+*.patch — see the README).
 // Models are fetched from Hugging Face by default (and cached in Cache Storage).
 // Set VITE_MODEL_BASE=/models to serve locally generated ones from public/models
 // (e.g. when iterating on the conversion pipeline).

@@ -126,8 +126,35 @@ class WSABlockAttention(nn.Module):
         return torch.cat([out_sink, out_t], dim=2)
 
 
+class _ExportRotaryEmbedding(torch.autograd.Function):
+    """Run RoPE in PyTorch and export it as ORT's contrib operator."""
+
+    @staticmethod
+    def forward(ctx, x, position_ids, cos_cache, sin_cache):
+        del ctx, position_ids
+        cos = cos_cache.repeat_interleave(2, dim=-1)[None, None]
+        sin = sin_cache.repeat_interleave(2, dim=-1)[None, None]
+        pairs = x.reshape(*x.shape[:-1], -1, 2)
+        rotated = torch.stack((-pairs[..., 1], pairs[..., 0]), dim=-1).flatten(-2)
+        return x * cos + rotated * sin
+
+    @staticmethod
+    def symbolic(g, x, position_ids, cos_cache, sin_cache):
+        output = g.op(
+            'com.microsoft::RotaryEmbedding',
+            x, position_ids, cos_cache, sin_cache,
+            interleaved_i=1,
+        )
+        return output.setType(x.type())
+
+
 class ExportRoPE(nn.Module):
-    """RoPE via constant cos/sin tables, equivalent to rotary_embedding_torch"""
+    """RoPE numerically equivalent to rotary_embedding_torch.
+
+    Exporting the arithmetic decomposition caused ORT to fold and then prune
+    thousands of block-local constants.  Emit RotaryEmbedding directly; this
+    is also the representation consumed by the patched web runtime.
+    """
 
     def __init__(self, rotary_embed, seq_len):
         super().__init__()
@@ -135,17 +162,16 @@ class ExportRoPE(nn.Module):
             device = rotary_embed.freqs.device
             pos = torch.arange(seq_len, dtype=torch.float32, device=device)
             freqs = rotary_embed.forward(pos).cpu()
-        self.register_buffer('cos', freqs.cos()[None, None], persistent=False)
-        self.register_buffer('sin', freqs.sin()[None, None], persistent=False)
-
-    @staticmethod
-    def rotate_half(x):
-        x = x.reshape(*x.shape[:-1], -1, 2)
-        x1, x2 = x[..., 0], x[..., 1]
-        return torch.stack((-x2, x1), dim=-1).reshape(*x.shape[:-2], -1)
+        # ORT's interleaved representation stores one value per adjacent pair.
+        self.register_buffer('position_ids', torch.arange(seq_len, dtype=torch.int64)[None],
+                             persistent=False)
+        self.register_buffer('cos', freqs.cos()[:, ::2].contiguous(), persistent=False)
+        self.register_buffer('sin', freqs.sin()[:, ::2].contiguous(), persistent=False)
 
     def forward(self, x):
-        return x * self.cos + self.rotate_half(x) * self.sin
+        position_ids = self.position_ids.expand(x.shape[0], -1)
+        return _ExportRotaryEmbedding.apply(
+            x, position_ids, self.cos, self.sin)
 
 
 class PatchedAttention(nn.Module):

@@ -28,7 +28,7 @@ The first run after page load compiles all WGSL pipelines (cold ≈ 2x warm).
 - **All nodes GPU-resident.** Split falls back to CPU in JSEP; expanding it to
   Slice (conversion/split_to_slice.py) removes every CPU hop and makes graph
   capture possible (enableGraphCapture + GPU-buffer IO binding in engine.js).
-- **Op fusions** (RoPE → RotaryEmbedding, Gelu, L2-clip RMSNorm →
+- **Op fusions** (RoPE exported directly as RotaryEmbedding, Gelu, L2-clip RMSNorm →
   LayerNormalization) cut ~1,700 dispatches.
 - **Custom WGSL attention kernel** (wagiriFusedAttention in the ORT patch):
   sink-8 + sliding-window block-local attention in one dispatch per node,

@@ -47,16 +47,14 @@ python conversion/export_onnx.py \
 #     (JSEP's Gemm shader is slow)
 #  3. Expand Split into Slice (Split falls back to CPU in JSEP; with it gone,
 #     every node stays on the GPU and graph capture becomes possible)
-#  4. Fuse RoPE into com.microsoft::RotaryEmbedding
-#  5. Replace block-local + sink attention with com.microsoft::MultiHeadAttention
+#  4. Replace block-local + sink attention with com.microsoft::MultiHeadAttention
 #     (paired with the custom WGSL kernel wagiriFusedAttention in the ORT patch)
-#  6. Fuse Gelu + remove redundant Expand nodes
-#  7. Fuse L2-clip RMSNorm into a single LayerNormalization node
+#  5. Fuse Gelu + remove redundant Expand nodes
+#  6. Fuse L2-clip RMSNorm into a single LayerNormalization node
 #     (hijacked implementation in the ORT patch)
 python conversion/offline_optimize.py wagiri-roformer.onnx opt.onnx
 python conversion/gemm_to_matmul.py opt.onnx opt.onnx
 python conversion/split_to_slice.py opt.onnx opt.onnx
-python conversion/fuse_rope.py opt.onnx opt.onnx
 python conversion/fuse_attention.py opt.onnx opt.onnx
 python conversion/fuse_for_jsep.py opt.onnx opt.onnx
 python conversion/fuse_rmsnorm.py opt.onnx public/models/wagiri-roformer-fp32.onnx
@@ -64,8 +62,11 @@ python conversion/to_fp16.py public/models/wagiri-roformer-fp32.onnx public/mode
 node conversion/test_dsp.mjs   # verify the JS-side STFT/iSTFT (requires gen_dsp_testvectors.py)
 ```
 
-The fusion passes (4–7) emit com.microsoft-domain nodes and **require the patched
-onnxruntime-web** (they don't work — or mean something different — on stock ORT).
+The exporter emits RoPE directly as com.microsoft::RotaryEmbedding instead of
+creating a large arithmetic subgraph that has to be folded and fused again.
+That operator and the fusion passes (4–6) emit com.microsoft-domain nodes and
+**require the patched onnxruntime-web** (they don't work — or mean something
+different — on stock ORT).
 The patch lives in `patches/onnxruntime-web+*.patch` and is applied to node_modules
 by [patch-package](https://github.com/ds300/patch-package) on `npm install`; it
 contains 4 self-contained hunks (matmul tile config, the wagiriFusedAttention

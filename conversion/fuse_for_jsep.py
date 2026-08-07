@@ -12,6 +12,7 @@ usage: python fuse_for_jsep.py in.onnx out.onnx
 import sys
 import onnx
 from onnx import helper, numpy_helper
+from onnx_utils import remove_unused_initializers
 
 def to_scalar(init):
     a = numpy_helper.to_array(init)
@@ -120,6 +121,7 @@ def main(src, dst):
     graph.node.extend(new_nodes)
 
     print(f'fused {gelu_count} Gelu, removed {expand_count} Expand')
+    print(f'removed {len(remove_unused_initializers(graph))} unused initializers')
     onnx.checker.check_model(model, full_check=False)
     onnx.save(model, dst, save_as_external_data=False)
 
