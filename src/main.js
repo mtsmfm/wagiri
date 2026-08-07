@@ -189,20 +189,40 @@ async function fetchModelCached(url) {
   const res = await fetch(url)
   if (!res.ok) throw new Error(t('model.fetchFailed', { status: res.status }))
   const total = parseInt(res.headers.get('Content-Length') || '0', 10)
+  // Stream a clone directly into Cache Storage. Building a second Response from
+  // the completed model would duplicate the entire (roughly 500 MB) buffer.
+  const cacheWrite = cache
+    ? cache.put(url, res.clone()).catch(() => {})
+    : Promise.resolve()
   const reader = res.body.getReader()
-  const chunks = []
+  // Content-Length is present on the model response, so fill its final buffer
+  // directly instead of retaining every chunk and copying them after download.
+  let combined = total ? new Uint8Array(total) : null
+  const chunks = [] // Fallback for responses without an accurate Content-Length.
   let loaded = 0
   for (;;) {
     const { done, value } = await reader.read()
     if (done) break
-    chunks.push(value)
+    if (combined && loaded + value.length <= combined.length) {
+      combined.set(value, loaded)
+    } else {
+      if (combined) {
+        chunks.push(combined.subarray(0, loaded))
+        combined = null
+      }
+      chunks.push(value)
+    }
     loaded += value.length
     setProgress(total ? loaded / total : 0, t('model.downloading', { loaded: (loaded / 1e6).toFixed(0), total: total ? ` / ${(total / 1e6).toFixed(0)}MB` : '' }))
   }
-  const combined = new Uint8Array(loaded)
-  let off = 0
-  for (const c of chunks) { combined.set(c, off); off += c.length }
-  if (cache) await cache.put(url, new Response(combined.slice().buffer)).catch(() => {})
+  await cacheWrite
+  if (!combined) {
+    combined = new Uint8Array(loaded)
+    let off = 0
+    for (const c of chunks) { combined.set(c, off); off += c.length }
+  } else if (loaded !== combined.length) {
+    combined = combined.slice(0, loaded)
+  }
   return combined.buffer
 }
 
