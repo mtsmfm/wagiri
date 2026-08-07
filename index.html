@@ -15,6 +15,14 @@
   body { font-family: system-ui, sans-serif; margin: 0; background: #f5f6f8; color: #222; }
   header { background: #2b3a55; color: #fff; padding: 10px 20px; display: flex; align-items: center; gap: 10px; }
   header h1 { font-size: 16px; margin: 0; }
+  .github-link { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: #fff; border: 1px solid rgba(255,255,255,.45); border-radius: 6px; padding: 5px 9px; font-size: 12px; font-weight: 600; text-decoration: none; }
+  .github-link:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.75); }
+  .github-link:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .github-link svg { fill: currentColor; flex: none; }
+  #lang-select { appearance: none; min-height: 28px; border: 1px solid rgba(255,255,255,.45); border-radius: 6px; padding: 4px 28px 4px 9px; color: #fff; background-color: rgba(255,255,255,.08); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='white' d='M2.2 4.2 6 8l3.8-3.8z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; font: inherit; font-size: 12px; cursor: pointer; }
+  #lang-select:hover { background-color: rgba(255,255,255,.16); border-color: rgba(255,255,255,.75); }
+  #lang-select:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  #lang-select option { color: #222; background: #fff; }
   main { max-width: 1100px; margin: 0 auto; padding: 20px; }
   .card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
   .card h2 { font-size: 14px; margin: 0 0 10px; color: #555; }
@@ -32,13 +40,21 @@
   #time { font-variant-numeric: tabular-nums; font-size: 13px; color: #555; }
   kbd { background: #edf2f7; border-radius: 3px; padding: 1px 5px; font-size: 12px; }
   .hint { font-size: 12px; color: #888; margin-top: 8px; }
+  @media (max-width: 420px) {
+    header { padding-inline: 12px; }
+    .github-label { display: none; }
+  }
 </style>
 </head>
 <body>
 <header>
   <img src="/logo.svg" alt="" width="26" height="26">
   <h1>Wagiri</h1><span id="time"></span>
-  <select id="lang-select" style="margin-left:auto">
+  <a class="github-link" href="https://github.com/mtsmfm/wagiri" target="_blank" rel="noopener noreferrer" aria-label="Wagiri on GitHub">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.64 0 8.13c0 3.59 2.29 6.64 5.47 7.71.4.08.55-.18.55-.39 0-.19-.01-.83-.01-1.51-2.01.38-2.53-.5-2.69-.96-.09-.24-.48-.97-.82-1.17-.28-.15-.68-.53-.01-.54.63-.01 1.08.59 1.23.83.72 1.23 1.87.88 2.33.67.07-.53.28-.88.51-1.08-1.78-.21-3.64-.91-3.64-4.02 0-.89.31-1.62.82-2.19-.08-.2-.36-1.04.08-2.16 0 0 .67-.22 2.2.84A7.48 7.48 0 0 1 8 3.89c.68 0 1.36.09 2 .27 1.53-1.06 2.2-.84 2.2-.84.44 1.12.16 1.96.08 2.16.51.57.82 1.29.82 2.19 0 3.12-1.87 3.81-3.65 4.02.29.25.54.74.54 1.5 0 1.08-.01 1.95-.01 2.23 0 .22.15.47.55.39A8.14 8.14 0 0 0 16 8.13C16 3.64 12.42 0 8 0Z"/></svg>
+    <span class="github-label">GitHub</span>
+  </a>
+  <select id="lang-select">
     <option value="ja">日本語</option>
     <option value="en">English</option>
   </select>
@@ -46,35 +62,34 @@
 <main>
   <div class="card">
     <h2 data-i18n="step1.title">1. 音声ファイルを読み込む</h2>
-    <div id="dropzone" data-i18n="dropzone.idle">ここにドロップ、またはクリックして選択(wav / mp3 / m4a など)</div>
+    <div id="dropzone" data-i18n="dropzone.idle">音声ファイルをドロップ、または選択</div>
     <input type="file" id="file-input" accept="audio/*,video/*" hidden>
   </div>
 
   <div class="card" id="sep-card" style="display:none">
-    <h2 data-i18n="step2.title">2. BGM 分離(ブラウザ内で実行)</h2>
+    <h2 data-i18n="step2.title">2. BGM 分離</h2>
     <div class="row">
-      <button id="btn-separate" data-i18n="btn.separate">BGM とボーカルを分離</button>
+      <button id="btn-separate" data-i18n="btn.separate">分離する</button>
       <progress id="sep-progress" max="1" value="0" style="display:none"></progress>
       <span id="sep-status"></span>
     </div>
     <div class="row" id="stem-buttons" style="margin-top:8px"></div>
     <div class="hint" data-i18n="sep.hint">
-      初回はモデルをダウンロードします(2回目以降はブラウザにキャッシュ)。
-      音声はどこにも送信されず、すべてこのブラウザ内で処理されます。
+      初回のみモデルをダウンロードします。音声は外部に送信されません。
     </div>
   </div>
 
   <div class="card" id="edit-card" style="display:none">
-    <h2 data-i18n="step3.title">3. 波形編集 — 切り出し</h2>
+    <h2 data-i18n="step3.title">3. 切り出し</h2>
     <div id="waveform"></div>
     <div class="row">
       <button id="btn-play" data-i18n="btn.play">再生 / 停止</button>
-      <button id="btn-play-region" class="secondary" data-i18n="btn.playRegion">選択範囲を再生</button>
+      <button id="btn-play-region" class="secondary" data-i18n="btn.playRegion">選択を再生</button>
       <button id="btn-clear" class="secondary" data-i18n="btn.clear">選択解除</button>
-      <button id="btn-export" data-i18n="btn.export">選択範囲を WAV で保存</button>
+      <button id="btn-export" data-i18n="btn.export">選択を WAV で保存</button>
       <span id="status"></span>
     </div>
-    <div class="hint" data-i18n-html="edit.hint">波形をドラッグで範囲選択。<kbd>ホイール</kbd> でズーム。範囲の端をドラッグで微調整。</div>
+    <div class="hint" data-i18n-html="edit.hint">ドラッグで範囲選択。<kbd>ホイール</kbd> でズーム。</div>
   </div>
 </main>
 <script type="module" src="/src/main.js"></script>
